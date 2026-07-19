@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XtremeTiers - Competitive Leaderboard Matrix</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23f0c040'/%3E%3Cstop offset='100%25' stop-color='%23e05c2a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='12' fill='%230d1117'/%3E%3Ctext x='32' y='48' font-family='Arial Black,sans-serif' font-size='48' font-weight='900' text-anchor='middle' fill='url(%23g)'%3EX%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<!-- 🔥 Firebase SDK (compat build — works with plain <script> tags, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-bright: #f0f6fc;
+    --muted: #8b949e;
+    
+    --accent: #f0c040;
+    --accent2: #e05c2a;
+    --winner-green: #238636;
+
+    /* Tier Colors ordered from high to low representation */
+    --color-ht1: #ff4444; 
+    --color-lt1: #a855f7; 
+    --color-ht2: #ff8800; 
+    --color-lt2: #ec4899; 
+    --color-ht3: #ffcc00;
+    --color-lt3: #3b82f6;
+    --color-ht4: #88ff00; 
+    --color-lt4: #6e7681;
+    --color-ht5: #00ccff;
+    --color-lt5: #4b5563;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background-color: var(--bg); 
+    color: var(--text); 
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* ── HEADER NAVIGATION BAR ── */
+  header {
+    background-color: #090d13;
+    border-bottom: 2px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    padding: 0 24px;
+  }
+  .header-inner {
+    max-width: 1300px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 70px;
+  }
+  .logo-area { display: flex; align-items: center; gap: 8px; }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900; font-size: 1.8rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+  }
+  
+  .nav-controls { display: flex; align-items: center; gap: 12px; }
+  .btn-nav {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 18px; border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .btn-nav:hover { background: var(--surface2); color: var(--text-bright); }
+  .btn-nav.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg); border-color: transparent;
+  }
+  
+  .btn-discord {
+    background-color: #5865F2 !important;
+    color: #ffffff !important;
+    border: none !important;
+  }
+  .btn-discord:hover {
+    background-color: #4752C4 !important;
+    box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+  }
+
+  /* ── HORIZONTAL GAMEMODES TOP NAVIGATION BAR ── */
+  .gm-nav-wrap {
+    background: #111520;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .gm-nav-wrap::-webkit-scrollbar { display: none; }
+  .gm-nav {
+    max-width: 1300px; margin: 0 auto; display: flex; padding: 0 12px;
+  }
+  .gm-tab {
+    flex: 0 0 auto; padding: 14px 20px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.95rem;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .gm-tab:hover { color: var(--text-bright); }
+  .gm-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(255,255,255,0.02); }
+  .gm-tab span { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; }
+  .gm-tab span img { width: 20px; height: 20px; object-fit: cover; border-radius: 3px; }
+
+  /* ── MAIN PANES ── */
+  main { max-width: 1300px; margin: 24px auto; padding: 0 24px; }
+  .view-pane { display: none; }
+  .view-pane.active { display: block; }
+
+  .filters-bar {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .search-input, .region-select {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-bright); padding: 8px 14px; border-radius: 6px;
+    outline: none; font-size: 0.9rem;
+  }
+  .search-input:focus, .region-select:focus { border-color: var(--accent); }
+
+  /* ── ROW DESIGN ── */
+  .leaderboard-container { display: flex; flex-direction: column; gap: 12px; }
+  
+  .player-card-row {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 120px 1fr 120px 320px;
+    align-items: center;
+    padding: 0;
+    overflow: hidden;
+    transition: transform 0.15s, background-color 0.15s;
+  }
+  .player-card-row:hover {
+    background-color: #1c232b;
+    transform: translateX(4px);
+  }
+
+  .rank-zone {
+    height: 76px; display: flex; align-items: center; padding-left: 24px;
+    position: relative; font-family: 'Orbitron', sans-serif;
+    font-weight: 900; font-size: 1.8rem; font-style: italic; color: var(--muted);
+    background: #1c2128; clip-path: polygon(0 0, 100% 0, 75% 100%, 0 100%);
+  }
+  .player-card-row.pos-1 .rank-zone { background: linear-gradient(135deg, #c8960c, #ffe066); color: #3a2a00; }
+  .player-card-row.pos-2 .rank-zone { background: linear-gradient(135deg, #505663, #d1d5db); color: #111; }
+  .player-card-row.pos-3 .rank-zone { background: linear-gradient(135deg, #7c3a0d, #d97706); color: #fff; }
+
+  .identity-zone { display: flex; align-items: center; gap: 16px; padding: 12px; }
+  .skin-box {
+    width: 48px; height: 48px; border-radius: 6px;
+    background-color: #0d1117; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .skin-box img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+  .ign-text { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--text-bright); line-height: 1.2; }
+  .pts-subtext { font-size: 0.78rem; color: var(--muted); margin-top: 2px; font-family: 'Orbitron', sans-serif; }
+  .pts-subtext strong { color: var(--accent); }
+
+  .region-zone { text-align: center; }
+  .region-pill {
+    display: inline-block; padding: 4px 12px; border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.85rem;
+    letter-spacing: 0.5px;
+  }
+  .pill-na { background: #1e3a5f; color: #60a5fa; }
+  .pill-eu { background: #1a3a2a; color: #4ade80; }
+  .pill-as { background: #3a1a2a; color: #f472b6; }
+  .pill-sa { background: #2a2a1a; color: #facc15; }
+
+  /* ── STACKED ROUNDED/SQUARE TIERS ENGINE ── */
+  .tiers-zone {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: flex-end; padding-right: 24px;
+  }
+  .stacked-tier-wrapper {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 42px;
+  }
+  .circular-mode-icon {
+    width: 26px; height: 26px; border-radius: 50%;
+    background-color: #0d1117; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; overflow: hidden;
+  }
+  .circular-mode-icon img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .square-tier-label {
+    width: 40px; height: 20px; border-radius: 4px;
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 0.65rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid transparent;
+  }
+
+  .label-ht1 { background: rgba(255,68,68,0.15); border-color: var(--color-ht1); color: var(--color-ht1); }
+  .label-lt1 { background: rgba(168,85,247,0.15); border-color: var(--color-lt1); color: var(--color-lt1); }
+  .label-ht2 { background: rgba(255,136,0,0.15); border-color: var(--color-ht2); color: var(--color-ht2); }
+  .label-lt2 { background: rgba(236,72,153,0.15); border-color: var(--color-lt2); color: var(--color-lt2); }
+  .label-ht3 { background: rgba(255,204,0,0.15); border-color: var(--color-ht3); color: var(--color-ht3); }
+  .label-lt3 { background: rgba(59,130,246,0.15); border-color: var(--color-lt3); color: var(--color-lt3); }
+  .label-ht4 { background: rgba(136,255,0,0.15); border-color: var(--color-ht4); color: var(--color-ht4); }
+  .label-lt4 { background: rgba(110,118,129,0.15); border-color: var(--color-lt4); color: var(--color-lt4); }
+  .label-ht5 { background: rgba(0,204,255,0.15); border-color: var(--color-ht5); color: var(--color-ht5); }
+  .label-lt5 { background: rgba(75,85,99,0.15); border-color: var(--color-lt5); color: var(--color-lt5); }
+
+  /* ── NEW HEAD-TO-HEAD COMPARE LAYOUT ── */
+  .cmp-selector-row {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+  }
+  .cmp-select { flex: 1; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem; }
+  .cmp-vs-badge {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.1rem;
+    color: var(--accent2); flex-shrink: 0; padding: 8px 14px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  }
+  .cmp-winner-banner {
+    text-align: center; font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: 1.1rem; color: var(--winner-green); margin-bottom: 18px;
+    min-height: 28px; letter-spacing: 1px;
+  }
+  .cmp-avatar-row {
+    display: flex; align-items: flex-end; margin-bottom: 24px; padding: 0 80px;
+  }
+  .cmp-avatar-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cmp-avatar-img {
+    width: 72px; height: 72px; border-radius: 10px; border: 2px solid var(--border);
+    image-rendering: pixelated; background: #0d1117; object-fit: contain;
+  }
+  .cmp-avatar-name {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem;
+    color: var(--text-bright);
+  }
+  .cmp-table-wrap { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .cmp-table { width: 100%; border-collapse: collapse; }
+  .cmp-table thead tr { background: var(--surface2); }
+  .cmp-th-left, .cmp-th-right {
+    padding: 10px 24px; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+    width: 35%;
+  }
+  .cmp-th-left { text-align: left; }
+  .cmp-th-right { text-align: right; }
+  .cmp-th-mid {
+    text-align: center; width: 30%; padding: 10px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+  }
+  .cmp-table tbody tr { border-top: 1px solid var(--border); transition: background 0.15s; }
+  .cmp-table tbody tr:nth-child(odd) { background: var(--surface); }
+  .cmp-table tbody tr:nth-child(even) { background: #0f1318; }
+  .cmp-table tbody tr:hover { background: var(--surface2); }
+  .cmp-td-left {
+    padding: 12px 24px; text-align: left;
+    font-family: 'Orbitron', sans-serif; font-size: 0.85rem; font-weight: 900;
+  }
+  .cmp-td-right {
+    padding: 12px 24px; text-align: right;
+    font-family: 'Orbitron', sans-serif; font-size: 0.85rem; font-weight: 900;
+  }
+  .cmp-td-mid {
+    padding: 12px; text-align: center;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem;
+    color: var(--muted); letter-spacing: 0.5px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .cmp-td-mid .cmp-mode-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .cmp-td-mid .cmp-mode-icon img { width: 22px; height: 22px; object-fit: cover; border-radius: 3px; display: block; }
+  .cmp-score-win { color: var(--winner-green); }
+  .cmp-score-lose { color: #ff4444; }
+  .cmp-score-neutral { color: var(--muted); }
+  .cmp-total-row { background: var(--surface2) !important; border-top: 2px solid var(--border) !important; }
+  .cmp-total-row td {
+    padding: 14px 24px; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1rem;
+  }
+  .cmp-total-row .cmp-td-left { text-align: left; }
+  .cmp-total-row .cmp-td-right { text-align: right; }
+  .cmp-total-row .cmp-td-mid { font-family: 'Rajdhani', sans-serif; font-size: 0.85rem; color: var(--muted); }
+  
+  .empty-state { padding: 60px; text-align: center; color: var(--muted); font-size: 1.1rem; font-family: 'Rajdhani', sans-serif; }
+
+  /* ── PLAYER INFO MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 16px; padding: 32px; width: 420px; max-width: 95vw;
+    position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-close {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none; color: var(--muted);
+    font-size: 1.4rem; cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text-bright); }
+  .modal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .modal-skin { width: 64px; height: 64px; border-radius: 8px; border: 2px solid var(--border); image-rendering: pixelated; background: #0d1117; object-fit: contain; }
+  .modal-name { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; font-weight: 900; color: var(--text-bright); }
+  .modal-title-tag {
+    display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 20px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.78rem; letter-spacing: 0.5px;
+  }
+  .title-grandmaster { background: linear-gradient(135deg,#c8960c,#ffe066); color: #2a1a00; }
+  .title-master { background: rgba(240,192,64,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .modal-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-stat { background: #0d1117; border-radius: 8px; padding: 12px 16px; border: 1px solid var(--border); }
+  .modal-stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-family: 'Rajdhani', sans-serif; font-weight: 700; margin-bottom: 4px; }
+  .modal-stat-value { font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 900; color: var(--text-bright); }
+  .modal-stat-value.accent { color: var(--accent); }
+  .modal-tiers-section { margin-top: 16px; }
+  .modal-tiers-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-family: 'Rajdhani', sans-serif; font-weight: 700; margin-bottom: 8px; }
+  .modal-tiers-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Combat title badges on leaderboard */
+  .combat-title-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.68rem;
+    letter-spacing: 0.5px; text-transform: uppercase; margin-left: 6px; vertical-align: middle;
+  }
+  .badge-grandmaster { background: linear-gradient(90deg,#c8960c,#ffe066); color: #2a1a00; }
+  .badge-master { background: rgba(240,192,64,0.12); color: var(--accent); border: 1px solid rgba(240,192,64,0.3); }
+
+  /* Clickable player rows */
+  .player-card-row { cursor: pointer; }
+
+  /* ── DISCORD CHOICE MODAL (matches site's own modal styling) ── */
+  .discord-choice-box { width: 380px; text-align: center; }
+  .discord-choice-icon {
+    width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px;
+    background: #5865F2; display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+  }
+  .discord-choice-title {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.15rem;
+    color: var(--text-bright); margin-bottom: 6px;
+  }
+  .discord-choice-sub {
+    font-family: 'Rajdhani', sans-serif; color: var(--muted); font-size: 0.95rem;
+    margin-bottom: 24px;
+  }
+  .discord-choice-buttons { display: flex; flex-direction: column; gap: 10px; }
+  .discord-choice-btn {
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem;
+    padding: 13px 18px; border-radius: 8px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .discord-choice-btn:hover { transform: translateY(-2px); }
+  .discord-choice-btn.go-server-btn { background: #5865F2; color: #fff; }
+  .discord-choice-btn.go-server-btn:hover { box-shadow: 0 6px 18px rgba(88,101,242,0.4); }
+  .discord-choice-btn.stay-here-btn {
+    background: var(--surface2); color: var(--text-bright); border: 1px solid var(--border);
+  }
+  .discord-choice-btn.stay-here-btn:hover { border-color: var(--accent); }
+
+  /* ── STAY-HERE-TO-TALK CHAT PANEL — deliberately styled like Discord's own client, distinct from the amber site theme ── */
+  .chat-panel-box {
+    width: 420px; max-width: 95vw; height: 260px; max-height: 88vh;
+    background: #313338; border: 1px solid #1e1f22; border-radius: 12px;
+    display: flex; flex-direction: column; overflow: hidden; padding: 0;
+  }
+  .chat-panel-header {
+    background: #2b2d31; padding: 16px 20px; display: flex; align-items: center;
+    justify-content: space-between; border-bottom: 1px solid #1e1f22; flex-shrink: 0;
+  }
+  .chat-panel-header-left { display: flex; align-items: center; gap: 10px; }
+  .chat-panel-header-icon {
+    width: 34px; height: 34px; border-radius: 50%; background: #5865F2;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;
+  }
+  .chat-panel-header-title { font-family: 'Inter', sans-serif; font-weight: 700; color: #f2f3f5; font-size: 1rem; }
+  .chat-panel-header-sub { font-family: 'Inter', sans-serif; color: #949ba4; font-size: 0.72rem; }
+  .chat-panel-close {
+    background: none; border: none; color: #b5bac1; font-size: 1.3rem; cursor: pointer; line-height: 1;
+  }
+  .chat-panel-close:hover { color: #fff; }
+  .chat-panel-body {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .chat-panel-body-text {
+    color: #949ba4; font-family: 'Inter', sans-serif; font-size: 0.9rem; text-align: center;
+  }
+  .chat-panel-inputbar {
+    padding: 14px 16px; border-top: 1px solid #1e1f22; flex-shrink: 0;
+    display: flex; gap: 10px; align-items: center; background: #313338;
+  }
+  .chat-panel-input {
+    flex: 1; background: #383a40; border: none; border-radius: 8px;
+    color: #f2f3f5; padding: 11px 14px; font-family: 'Inter', sans-serif; font-size: 0.9rem;
+    outline: none; resize: none;
+  }
+  .chat-panel-input::placeholder { color: #6d7178; }
+  .chat-panel-send-btn {
+    background: #5865F2; border: none; color: #fff; width: 40px; height: 40px;
+    border-radius: 8px; cursor: pointer; flex-shrink: 0; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+  }
+  .chat-panel-send-btn:hover { background: #4752C4; }
+  .chat-panel-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-area">
+      <h1 class="logo">XTREME<span>TIERS</span></h1>
+    </div>
+    <div class="nav-controls">
+      <button class="btn-nav active" id="nav-leaderboard" onclick="switchActivePane('leaderboard')">Leaderboard</button>
+      <button class="btn-nav" id="nav-compare" onclick="switchActivePane('compare')">Compare Matrix</button>
+      <button class="btn-nav btn-discord" onclick="openDiscordChoiceModal()">Discord</button>
+    </div>
+  </div>
+</header>
+
+<div class="gm-nav-wrap">
+  <div class="gm-nav" id="topGamemodesMenuBar"></div>
+</div>
+
+<main>
+
+  <div class="view-pane active" id="pane-leaderboard">
+    <div class="filters-bar">
+      <input type="text" class="search-input" id="playerLiveSearchFilter" placeholder="Search operational indices..." oninput="processUIRefreshLoop()">
+      <select class="region-select" id="playerRegionSelectFilter" onchange="processUIRefreshLoop()">
+        <option value="">All Global Regions</option>
+        <option value="NA">NA</option>
+        <option value="EU">EU</option>
+        <option value="AS">AS</option>
+        <option value="SA">SA</option>
+      </select>
+    </div>
+    <div class="leaderboard-container" id="mainRenderLeaderboardOutputContainer">
+      <div class="empty-state" id="loadingStateIndicator">⚡ Establishing Cloud Connection Matrix... Fetching Latest Dynamic Profiles...</div>
+    </div>
+  </div>
+
+  <div class="view-pane" id="pane-compare">
+    <!-- Player selector row -->
+    <div class="cmp-selector-row">
+      <select class="form-select cmp-select" id="cmpSelectA" onchange="runCompareAnalytics()"></select>
+      <div class="cmp-vs-badge">VS</div>
+      <select class="form-select cmp-select" id="cmpSelectB" onchange="runCompareAnalytics()"></select>
+    </div>
+
+    <!-- Winner banner -->
+    <div class="cmp-winner-banner" id="cmpWinnerBanner"></div>
+
+    <!-- Avatar row -->
+    <div class="cmp-avatar-row">
+      <div class="cmp-avatar-block" id="cmpAvatarBlockA">
+        <img class="cmp-avatar-img" id="cmpAvatarA" src="" alt="">
+        <div class="cmp-avatar-name" id="cmpAvatarNameA">--</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="cmp-avatar-block" id="cmpAvatarBlockB">
+        <img class="cmp-avatar-img" id="cmpAvatarB" src="" alt="">
+        <div class="cmp-avatar-name" id="cmpAvatarNameB">--</div>
+      </div>
+    </div>
+
+    <!-- Head-to-head gamemode breakdown table -->
+    <div class="cmp-table-wrap">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th class="cmp-th-left">Player A</th>
+            <th class="cmp-th-mid">GAMEMODE</th>
+            <th class="cmp-th-right">Player B</th>
+          </tr>
+        </thead>
+        <tbody id="cmpTableBody"></tbody>
+        <tfoot>
+          <tr class="cmp-total-row">
+            <td id="cmpTotalA" class="cmp-td-left">—</td>
+            <td class="cmp-td-mid"><strong>TOTAL</strong></td>
+            <td id="cmpTotalB" class="cmp-td-right">—</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+<div class="modal-overlay" id="playerInfoModal" onclick="closePlayerModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('playerInfoModal').classList.remove('open')">&times;</button>
+    <div class="modal-header">
+      <img class="modal-skin" id="modalSkinImg" src="" alt="skin">
+      <div>
+        <div class="modal-name" id="modalName"></div>
+        <span class="modal-title-tag" id="modalTitleTag"></span>
+      </div>
+    </div>
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <div class="modal-stat-label">Total Points</div>
+        <div class="modal-stat-value accent" id="modalPoints"></div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Rank</div>
+        <div class="modal-stat-value" id="modalRank"></div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Region</div>
+        <div class="modal-stat-value" id="modalRegion"></div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Device</div>
+        <div class="modal-stat-value" id="modalDevice"></div>
+      </div>
+    </div>
+    <div class="modal-tiers-section">
+      <div class="modal-tiers-label">Tier Brackets</div>
+      <div class="modal-tiers-row" id="modalTiersRow"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DISCORD CHOICE MODAL ── -->
+<div class="modal-overlay" id="discordChoiceModal" onclick="if(event.target===this) closeDiscordChoiceModal()">
+  <div class="modal-box discord-choice-box">
+    <button class="modal-close" onclick="closeDiscordChoiceModal()">&times;</button>
+    <div class="discord-choice-icon">💬</div>
+    <div class="discord-choice-title">Join the conversation</div>
+    <div class="discord-choice-sub">Head to our Discord server, or send a message right here.</div>
+    <div class="discord-choice-buttons">
+      <button class="discord-choice-btn go-server-btn" onclick="goToDiscordServer()">🚀 Go to Server</button>
+      <button class="discord-choice-btn stay-here-btn" onclick="openChatPanel()">💬 Stay Here to Talk</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── STAY-HERE-TO-TALK CHAT PANEL ── -->
+<div class="modal-overlay" id="chatPanelModal" onclick="if(event.target===this) closeChatPanel()">
+  <div class="modal-box chat-panel-box">
+    <div class="chat-panel-header">
+      <div class="chat-panel-header-left">
+        <div class="chat-panel-header-icon">💬</div>
+        <div>
+          <div class="chat-panel-header-title">Site Chat → #discord</div>
+          <div class="chat-panel-header-sub">Messages here are relayed to our Discord</div>
+        </div>
+      </div>
+      <button class="chat-panel-close" onclick="closeChatPanel()">&times;</button>
+    </div>
+    <div class="chat-panel-body">
+      <div class="chat-panel-body-text">Send a message straight to our Discord channel from here.</div>
+    </div>
+    <div class="chat-panel-inputbar">
+      <textarea class="chat-panel-input" id="chatPanelInput" placeholder="Message..." rows="1" maxlength="500" onkeydown="handleChatInputKeydown(event)"></textarea>
+      <button class="chat-panel-send-btn" id="chatPanelSendBtn" onclick="sendChatPanelMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// This page is READ-ONLY / public-facing. Admin sign-in and all write
+// operations live in admin.html, which is not linked from here.
+
+// 🔥 FIREBASE PROJECT CONFIGURATION
+// Get this object from: Firebase Console → ⚙ Project Settings → General → Your apps → Web app (</>) → SDK setup and configuration
+// REPLACE every value below with YOUR project's own config before this app will work.
+const firebaseConfig = {
+  apiKey: "AIzaSyC4Enyi8CEJzGffh339VXp5BADM-qio644",
+  authDomain: "xtremetiers2.firebaseapp.com",
+  projectId: "xtremetiers2",
+  storageBucket: "xtremetiers2.firebasestorage.app",
+  messagingSenderId: "786432880988",
+  appId: "1:786432880988:web:cb9c01b91e80fce6115199"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const playersCollectionRef = db.collection('players');
+let firebaseLiveListenerUnsubscribe = null;
+
+// ── DISCORD "STAY HERE TO TALK" CONFIG ──
+// Invite link used by the "Go to Server" button.
+const DISCORD_INVITE_URL = "https://discord.gg/7kd4XWAhn3";
+// ⚠️ REPLACE with your own Discord webhook URL (Server Settings → Integrations → Webhooks → New Webhook → Copy URL).
+// Webhooks can only SEND messages into Discord — they cannot read the channel's history back.
+// So this panel relays what visitors type into your Discord channel, and separately stores a copy in
+// Firestore so everyone with the panel open can see a live preview of messages sent from the site.
+// Real two-way sync (showing actual Discord replies here) needs a Discord bot with a backend, which a
+// static page like this can't run — this webhook-based relay is the practical version of that.
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1528374599690223688/FzL4pPjKDHQ3f0z3Vxi84zLWDf0FoAggcOEf1BU-mvczsCHDfoN12roCSm7okQlku7av";
+
+// RUNTIME CACHED CONFIGURATIONS MAP FOR PERSISTENT LOGO GRAPHICS
+// Icons are stored in Firebase (config/gamemodes) so ALL users see the same logos.
+// localStorage is used only as a fast local cache to avoid flicker on load.
+const DEFAULT_GAMEMODES_LIST = [
+  { id: 'overall',    label: 'Overall',       type: 'emoji', value: '🏆' },
+  { id: 'vanilla',    label: 'Vanilla',       type: 'link', value: 'https://raw.githubusercontent.com/xtremetechprograms/XtremeTiers4/6ad21bc29f857ff6fec30ffbe3a18b883de679a7/cpvp.png' },
+  { id: 'sword',      label: 'Sword',         type: 'emoji', value: '⚔️' },
+  { id: 'nethpot',    label: 'Nethpot',       type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/nethop.png?raw=true' },
+  { id: 'diamondpot', label: 'Diamond Pot',   type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/Splash_Potion_of_Healing_JE2_BE2.png?raw=true' },
+  { id: 'uhc',        label: 'UHC',           type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/NicePng_lava-png_2333777.png?raw=true' },
+  { id: 'mace',       label: 'Mace',          type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/cff62287c480b3f8502dcb6b6bcc1fdc6f9b30fb.png?raw=true' },
+  { id: 'spearmace',  label: 'Spear Mace',    type: 'emoji', value: '🗡️' },
+  { id: 'smp',        label: 'SMP',           type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/6e7d624ff4c5fce44f7a9c3b6af3197ff815caec.png?raw=true' },
+  { id: 'axe',        label: 'Axe',           type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/Diamond-Axe-Minecraft-Tool-952.png?raw=true' },
+  { id: 'bedwars',    label: 'Bedwars',       type: 'link', value: 'https://github.com/xtremetechprograms/XtremeTiers4/blob/main/NicePng_bed-png_88115.png?raw=true' },
+  { id: 'spleef',     label: 'Spleef',        type: 'emoji', value: '❄️' },
+  { id: 'fireball',   label: 'Fireball Fight',type: 'emoji', value: '🔥' }
+];
+// Icons always loaded from Firebase (single source of truth for all devices)
+let dynamicGamemodesMappingList = JSON.parse(JSON.stringify(DEFAULT_GAMEMODES_LIST));
+const configDocRef = db.collection('config').doc('gamemodes');
+
+// Load gamemode icons from Firebase — real-time listener so ALL users get updates instantly
+function loadGamemodeConfigFromFirebase() {
+  configDocRef.onSnapshot(doc => {
+    if (doc.exists && doc.data().modes) {
+      let modes = doc.data().modes;
+      // Sanitize all values — strip any HTML tags that may have been saved corrupt
+      let dirty = false;
+      modes = modes.map(gm => {
+        const clean = (gm.value || '').replace(/<[^>]*>/g, '').trim();
+        if (clean !== (gm.value || '').trim()) { dirty = true; }
+        return { ...gm, value: clean };
+      });
+      dynamicGamemodesMappingList = modes;
+      // If corrupt data was found, auto-save cleaned version back to Firebase
+      if (dirty) {
+        configDocRef.set({ modes: dynamicGamemodesMappingList })
+          .then(() => console.log('Auto-cleaned corrupt logo data in Firebase.'))
+          .catch(err => console.warn('Could not auto-clean Firebase:', err));
+      }
+    } else {
+      dynamicGamemodesMappingList = JSON.parse(JSON.stringify(DEFAULT_GAMEMODES_LIST));
+    }
+    generateTopMenuBarTabsLayout();
+    processUIRefreshLoop();
+  }, err => console.warn("Could not sync gamemode config from Firebase:", err));
+}
+
+// Save gamemode icons to Firebase so ALL users get the update instantly
+function saveGamemodeConfigToFirebase() {
+  configDocRef.set({ modes: dynamicGamemodesMappingList })
+    .catch(err => console.error("Failed to save gamemode config to Firebase:", err));
+}
+
+const SUGGESTED_TIER_POINTS_BOUNDS = {
+  LT5: { start: 10,  end: 49 },
+  HT5: { start: 50,  end: 99 },
+  LT4: { start: 100, end: 149 },
+  HT4: { start: 150, end: 199 },
+  LT3: { start: 200, end: 249 },
+  HT3: { start: 250, end: 299 },
+  LT2: { start: 300, end: 349 },
+  HT2: { start: 350, end: 399 },
+  LT1: { start: 400, end: 449 },
+  HT1: { start: 450, end: 500 }
+};
+
+const STEVE_FALLBACK_SKIN_STREAM = "https://minotar.net/avatar/MHF_Steve/48";
+
+// Same 3D bust renderer the XtremeAI Discord bot uses for skins (render.crafty.gg),
+// built straight from the player's IGN — so the site's skin previews match the bot's.
+function build3DSkinRenderUrl(playerName) {
+  return `https://render.crafty.gg/3d/bust/${encodeURIComponent(playerName || 'MHF_Steve')}`;
+}
+
+// Chained fallback for skin <img> tags: custom avatar URL (if set) → 3D bust render → flat 2D fallback.
+function handleSkinImgError(imgEl, playerName) {
+  const stage = imgEl.dataset.skinStage || '0';
+  if (stage === '0') {
+    imgEl.dataset.skinStage = '1';
+    imgEl.src = build3DSkinRenderUrl(playerName);
+  } else {
+    imgEl.src = STEVE_FALLBACK_SKIN_STREAM;
+  }
+}
+
+let appRuntimeState = {
+  currentActiveTabId: 'overall',
+  currentActivePaneId: 'leaderboard',
+  playersCollection: []
+};
+
+function generateTopMenuBarTabsLayout() {
+  const container = document.getElementById('topGamemodesMenuBar');
+  container.innerHTML = dynamicGamemodesMappingList.map(gm => {
+    return `
+      <button class="gm-tab ${gm.id === appRuntimeState.currentActiveTabId ? 'active' : ''}" onclick="selectCategoryModeTab('${gm.id}')">
+        <span>${parseIconElementHtmlMarkup(gm.id, 20)}</span>
+        ${gm.label}
+      </button>
+    `;
+  }).join('');
+}
+
+function selectCategoryModeTab(targetCategoryId) {
+  appRuntimeState.currentActiveTabId = targetCategoryId;
+  generateTopMenuBarTabsLayout();
+  processUIRefreshLoop();
+}
+
+function switchActivePane(targetPaneId) {
+  appRuntimeState.currentActivePaneId = targetPaneId;
+  document.querySelectorAll('.view-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.btn-nav').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById(`pane-${targetPaneId}`).classList.add('active');
+  const activeBtn = document.getElementById(`nav-${targetPaneId}`);
+  if(activeBtn) activeBtn.classList.add('active');
+
+  if(targetPaneId === 'leaderboard') processUIRefreshLoop();
+  if(targetPaneId === 'compare') setupCompareDropdownEngine();
+}
+
+// 🔥 FIREBASE REAL-TIME SYNC ENGINE
+// Opens a live connection to the 'players' collection. Any add/edit/delete — from
+// this browser, another admin's browser, or directly in the Firebase console —
+// pushes here instantly and re-renders the UI. No manual refresh needed.
+function startFirebaseRealtimeSync() {
+  const indicator = document.getElementById('loadingStateIndicator');
+  if (indicator) indicator.style.display = 'block';
+
+  if (firebaseLiveListenerUnsubscribe) firebaseLiveListenerUnsubscribe();
+
+  firebaseLiveListenerUnsubscribe = playersCollectionRef.onSnapshot((snapshot) => {
+    appRuntimeState.playersCollection = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+
+    generateTopMenuBarTabsLayout();
+    processUIRefreshLoop();
+    setupCompareDropdownEngine();
+  }, (err) => {
+    console.error("Firebase Realtime Sync Error: ", err);
+    const dest = document.getElementById('mainRenderLeaderboardOutputContainer');
+    if (dest) dest.innerHTML = `<div class="empty-state" style="color:#ff4444;">❌ Firebase connection failed. Check your firebaseConfig values and Firestore security rules.</div>`;
+  });
+}
+
+function parseIconElementHtmlMarkup(modeId, size) {
+  size = size || 22;
+  let item = dynamicGamemodesMappingList.find(g => g.id === modeId);
+  if(!item) return '🎮';
+  if(item.type === 'link') {
+    return `<img src="${item.value}" onerror="this.outerHTML='🎮'" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:3px;display:block;flex-shrink:0;">`;
+  }
+  return item.value;
+}
+
+function buildAggregatedPlayerOverallList() {
+  let mappedUserSummaryMatrix = {};
+  appRuntimeState.playersCollection.forEach(entry => {
+    if (!mappedUserSummaryMatrix[entry.name]) {
+      mappedUserSummaryMatrix[entry.name] = {
+        name: entry.name, region: entry.region, avatar: entry.avatar,
+        cumulativeTotalPoints: 0, registeredTiersMap: []
+      };
+    }
+    mappedUserSummaryMatrix[entry.name].cumulativeTotalPoints += (parseInt(entry.points) || 0);
+    if(entry.tier) {
+      mappedUserSummaryMatrix[entry.name].registeredTiersMap.push({ gamemode: entry.gamemode, tier: entry.tier });
+    }
+  });
+  return Object.values(mappedUserSummaryMatrix);
+}
+
+function processUIRefreshLoop() {
+  const destinationGrid = document.getElementById('mainRenderLeaderboardOutputContainer');
+  if(!destinationGrid) return;
+  
+  const searchStringFilter = document.getElementById('playerLiveSearchFilter').value.toLowerCase().trim();
+  const regionSelectorFilter = document.getElementById('playerRegionSelectFilter').value;
+
+  let computedRenderManifest = [];
+
+  if (appRuntimeState.currentActiveTabId === 'overall') {
+    let aggregatedProfiles = buildAggregatedPlayerOverallList();
+    computedRenderManifest = aggregatedProfiles.map(p => {
+      let formattedTiersArray = p.registeredTiersMap.map(t => {
+        return `
+          <div class="stacked-tier-wrapper">
+            <div class="circular-mode-icon">${parseIconElementHtmlMarkup(t.gamemode, 26)}</div>
+            <div class="square-tier-label label-${t.tier.toLowerCase()}">${t.tier}</div>
+          </div>
+        `;
+      }).join('');
+
+      return {
+        name: p.name, region: p.region, points: p.cumulativeTotalPoints, avatar: p.avatar,
+        subLabel: "COMBAT MASTER", tiersHtmlOutputBlock: formattedTiersArray
+      };
+    });
+  } else {
+    let isolatedGamemodeEntries = appRuntimeState.playersCollection.filter(p => p.gamemode === appRuntimeState.currentActiveTabId);
+    computedRenderManifest = isolatedGamemodeEntries.map(p => {
+      let activeModeMeta = dynamicGamemodesMappingList.find(g => g.id === p.gamemode);
+      let tierBadgeBlock = p.tier ? `
+        <div class="stacked-tier-wrapper">
+          <div class="circular-mode-icon">${parseIconElementHtmlMarkup(p.gamemode, 26)}</div>
+          <div class="square-tier-label label-${p.tier.toLowerCase()}">${p.tier}</div>
+        </div>
+      ` : ``;
+
+      return {
+        name: p.name, region: p.region, points: p.points, avatar: p.avatar,
+        subLabel: activeModeMeta ? activeModeMeta.label.toUpperCase() : "ARENA CONTESTANT",
+        tiersHtmlOutputBlock: tierBadgeBlock
+      };
+    });
+  }
+
+  let processedOutputManifest = computedRenderManifest
+    .filter(p => !searchStringFilter || p.name.toLowerCase().includes(searchStringFilter))
+    .filter(p => !regionSelectorFilter || p.region === regionSelectorFilter)
+    .sort((a, b) => b.points - a.points);
+
+  if (processedOutputManifest.length === 0) {
+    if (appRuntimeState.playersCollection.length === 0) {
+      destinationGrid.innerHTML = `<div class="empty-state">⚡ Synchronizing with cloud streams...</div>`;
+    } else {
+      destinationGrid.innerHTML = `<div class="empty-state">No matching data profiles found in this layout grid category.</div>`;
+    }
+    return;
+  }
+
+  destinationGrid.innerHTML = processedOutputManifest.map((player, loopIdx) => {
+    const positionNumericalRankId = loopIdx + 1;
+    let rankClass = "pos-normal";
+    if(positionNumericalRankId === 1) rankClass = "pos-1";
+    if(positionNumericalRankId === 2) rankClass = "pos-2";
+    if(positionNumericalRankId === 3) rankClass = "pos-3";
+
+    const safePlayerNameAttr = (player.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const liveSkinUri = player.avatar ? player.avatar : build3DSkinRenderUrl(player.name);
+    const skinStartStage = player.avatar ? '0' : '1';
+    let combatBadge = '';
+    if (positionNumericalRankId === 1) combatBadge = `<span class="combat-title-badge badge-grandmaster">Combat Grandmaster</span>`;
+    else if (positionNumericalRankId === 2 || positionNumericalRankId === 3) combatBadge = `<span class="combat-title-badge badge-master">Combat Master</span>`;
+
+    return `
+      <div class="player-card-row ${rankClass}" onclick="openPlayerModal('${safePlayerNameAttr}', ${positionNumericalRankId})">
+        <div class="rank-zone">${positionNumericalRankId}.</div>
+        <div class="identity-zone">
+          <div class="skin-box">
+            <img src="${liveSkinUri}" data-skin-stage="${skinStartStage}" onerror="handleSkinImgError(this, '${safePlayerNameAttr}')">
+          </div>
+          <div>
+            <div class="ign-text">${player.name}</div>
+            <div class="pts-subtext">${player.subLabel} (<strong>${player.points} points</strong>) ${combatBadge}</div>
+          </div>
+        </div>
+        <div class="region-zone">
+          <span class="region-pill pill-${player.region.toLowerCase()}">${player.region}</span>
+        </div>
+        <div class="tiers-zone">
+          ${player.tiersHtmlOutputBlock}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── COMPARE ANALYTICS WIN DECISION CALCULATIONS ENGINE ──
+function setupCompareDropdownEngine() {
+  const selectDropdownElementA = document.getElementById('cmpSelectA');
+  const selectDropdownElementB = document.getElementById('cmpSelectB');
+  if(!selectDropdownElementA || !selectDropdownElementB) return;
+
+  let uniqueUsersManifest = buildAggregatedPlayerOverallList();
+  if(uniqueUsersManifest.length === 0) {
+    selectDropdownElementA.innerHTML = selectDropdownElementB.innerHTML = `<option>No active sync entries</option>`;
+    return;
+  }
+
+  let options = uniqueUsersManifest.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  selectDropdownElementA.innerHTML = selectDropdownElementB.innerHTML = options;
+  if (selectDropdownElementB.options[1]) selectDropdownElementB.selectedIndex = 1;
+  runCompareAnalytics();
+}
+
+function runCompareAnalytics() {
+  const nameA = document.getElementById('cmpSelectA').value;
+  const nameB = document.getElementById('cmpSelectB').value;
+
+  const allPlayers = buildAggregatedPlayerOverallList();
+  const pA = allPlayers.find(p => p.name === nameA);
+  const pB = allPlayers.find(p => p.name === nameB);
+  if (!pA || !pB) return;
+
+  // Update avatars (3D bust render when no custom avatar is set, same as the leaderboard)
+  const imgA = document.getElementById('cmpAvatarA');
+  const imgB = document.getElementById('cmpAvatarB');
+  imgA.dataset.skinStage = pA.avatar ? '0' : '1';
+  imgA.src = pA.avatar || build3DSkinRenderUrl(pA.name);
+  imgA.onerror = () => handleSkinImgError(imgA, pA.name);
+  imgB.dataset.skinStage = pB.avatar ? '0' : '1';
+  imgB.src = pB.avatar || build3DSkinRenderUrl(pB.name);
+  imgB.onerror = () => handleSkinImgError(imgB, pB.name);
+  document.getElementById('cmpAvatarNameA').textContent = pA.name;
+  document.getElementById('cmpAvatarNameB').textContent = pB.name;
+
+  // Build per-gamemode lookup maps
+  const mapA = {}; const mapB = {};
+  appRuntimeState.playersCollection.forEach(e => {
+    if (e.name === nameA) mapA[e.gamemode] = e;
+    if (e.name === nameB) mapB[e.gamemode] = e;
+  });
+
+  // Collect all gamemodes either player has
+  const allModes = [...new Set([...Object.keys(mapA), ...Object.keys(mapB)])];
+
+  let totalA = 0, totalB = 0;
+  const tbody = document.getElementById('cmpTableBody');
+  tbody.innerHTML = allModes.map(modeId => {
+    const eA = mapA[modeId];
+    const eB = mapB[modeId];
+    const ptA = eA ? (parseInt(eA.points) || 0) : 0;
+    const ptB = eB ? (parseInt(eB.points) || 0) : 0;
+    const tierA = eA && eA.tier ? eA.tier : null;
+    const tierB = eB && eB.tier ? eB.tier : null;
+    totalA += ptA; totalB += ptB;
+
+    const classA = ptA > ptB ? 'cmp-score-win' : ptA < ptB ? 'cmp-score-lose' : 'cmp-score-neutral';
+    const classB = ptB > ptA ? 'cmp-score-win' : ptB < ptA ? 'cmp-score-lose' : 'cmp-score-neutral';
+
+    const labelA = tierA ? `${tierA} (${ptA})` : `- (0)`;
+    const labelB = tierB ? `${tierB} (${ptB})` : `- (0)`;
+
+    const iconHtml = parseIconElementHtmlMarkup(modeId, 22);
+    const modeMeta = dynamicGamemodesMappingList.find(g => g.id === modeId);
+    const modeLabel = modeMeta ? modeMeta.label.toUpperCase() : modeId.toUpperCase();
+
+    return `<tr>
+      <td class="cmp-td-left ${classA}">${labelA}</td>
+      <td style="padding:10px; text-align:center;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <div class="cmp-td-mid cmp-mode-icon" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${iconHtml}</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.85rem; color:var(--muted); letter-spacing:0.5px;">${modeLabel}</div>
+        </div>
+      </td>
+      <td class="cmp-td-right ${classB}">${labelB}</td>
+    </tr>`;
+  }).join('');
+
+  // Totals
+  const clsTA = totalA > totalB ? 'cmp-score-win' : totalA < totalB ? 'cmp-score-lose' : 'cmp-score-neutral';
+  const clsTB = totalB > totalA ? 'cmp-score-win' : totalB < totalA ? 'cmp-score-lose' : 'cmp-score-neutral';
+  document.getElementById('cmpTotalA').textContent = totalA;
+  document.getElementById('cmpTotalA').className = `cmp-td-left ${clsTA}`;
+  document.getElementById('cmpTotalB').textContent = totalB;
+  document.getElementById('cmpTotalB').className = `cmp-td-right ${clsTB}`;
+
+  // Winner banner
+  const banner = document.getElementById('cmpWinnerBanner');
+  if (totalA > totalB) banner.textContent = `${pA.name} WINS 🏆`;
+  else if (totalB > totalA) banner.textContent = `${pB.name} WINS 🏆`;
+  else banner.textContent = `TIE ⚖️`;
+}
+
+// ── PLAYER INFO MODAL ──
+function openPlayerModal(playerName, rank) {
+  let allPlayers = buildAggregatedPlayerOverallList();
+  let playerData = null;
+  if (appRuntimeState.currentActiveTabId === 'overall') {
+    playerData = allPlayers.find(p => p.name === playerName);
+  } else {
+    let modeEntry = appRuntimeState.playersCollection.find(p => p.name === playerName && p.gamemode === appRuntimeState.currentActiveTabId);
+    if (modeEntry) {
+      playerData = { name: modeEntry.name, region: modeEntry.region, avatar: modeEntry.avatar, device: modeEntry.device, cumulativeTotalPoints: modeEntry.points, registeredTiersMap: modeEntry.tier ? [{ gamemode: modeEntry.gamemode, tier: modeEntry.tier }] : [] };
+    }
+  }
+  if (!playerData) return;
+  let rawEntry = appRuntimeState.playersCollection.find(p => p.name === playerName);
+  let deviceValue = (rawEntry && rawEntry.device) ? rawEntry.device : '—';
+  let deviceDisplay = deviceValue;
+  let titleText = '';
+  let titleClass = '';
+  if (rank === 1) { titleText = 'Combat Grandmaster'; titleClass = 'title-grandmaster'; }
+  else if (rank === 2 || rank === 3) { titleText = 'Combat Master'; titleClass = 'title-master'; }
+  document.getElementById('modalName').textContent = playerData.name;
+  const modalSkinImg = document.getElementById('modalSkinImg');
+  modalSkinImg.dataset.skinStage = playerData.avatar ? '0' : '1';
+  modalSkinImg.src = playerData.avatar || build3DSkinRenderUrl(playerData.name);
+  modalSkinImg.onerror = function() { handleSkinImgError(this, playerData.name); };
+  const titleTag = document.getElementById('modalTitleTag');
+  titleTag.textContent = titleText;
+  titleTag.className = 'modal-title-tag ' + titleClass;
+  titleTag.style.display = titleText ? 'inline-block' : 'none';
+  document.getElementById('modalPoints').textContent = playerData.cumulativeTotalPoints + ' pts';
+  document.getElementById('modalRank').textContent = '#' + rank;
+  document.getElementById('modalRegion').textContent = playerData.region || '—';
+  document.getElementById('modalDevice').textContent = deviceDisplay;
+  let tiersHtml = playerData.registeredTiersMap.length > 0
+    ? playerData.registeredTiersMap.map(t => `<div class="stacked-tier-wrapper"><div class="circular-mode-icon">${parseIconElementHtmlMarkup(t.gamemode, 26)}</div><div class="square-tier-label label-${t.tier.toLowerCase()}">${t.tier}</div></div>`).join('')
+    : '<span style="color:var(--muted); font-size:0.85rem;">No tiers assigned</span>';
+  document.getElementById('modalTiersRow').innerHTML = tiersHtml;
+  document.getElementById('playerInfoModal').classList.add('open');
+}
+function closePlayerModal(event) {
+  if (event.target === document.getElementById('playerInfoModal')) {
+    document.getElementById('playerInfoModal').classList.remove('open');
+  }
+}
+
+// ── DISCORD CHOICE MODAL ──
+function openDiscordChoiceModal() {
+  document.getElementById('discordChoiceModal').classList.add('open');
+}
+function closeDiscordChoiceModal() {
+  document.getElementById('discordChoiceModal').classList.remove('open');
+}
+function goToDiscordServer() {
+  window.open(DISCORD_INVITE_URL, '_blank');
+  closeDiscordChoiceModal();
+}
+
+// ── STAY-HERE-TO-TALK CHAT PANEL ──
+function openChatPanel() {
+  closeDiscordChoiceModal();
+  document.getElementById('chatPanelModal').classList.add('open');
+  setTimeout(() => document.getElementById('chatPanelInput').focus(), 100);
+}
+function closeChatPanel() {
+  document.getElementById('chatPanelModal').classList.remove('open');
+}
+
+function handleChatInputKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChatPanelMessage();
+  }
+}
+
+async function sendChatPanelMessage() {
+  const input = document.getElementById('chatPanelInput');
+  const sendBtn = document.getElementById('chatPanelSendBtn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  // Relay to Discord via webhook. No "username" field is sent, so it posts
+  // under the webhook's own configured name/avatar (as set in Discord).
+  try {
+    const res = await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text })
+    });
+    if (!res.ok) throw new Error('Webhook responded with ' + res.status);
+  } catch (err) {
+    console.error('Webhook send failed:', err);
+    alert('Message failed to send to Discord. Please try again.');
+  }
+
+  sendBtn.disabled = false;
+}
+
+// WINDOW LOAD RUNTIME ROOT SYSTEM ENTRY TRIGGER
+window.addEventListener('DOMContentLoaded', () => {
+  generateTopMenuBarTabsLayout();
+  
+  // LOAD GAMEMODE ICONS FROM FIREBASE (so all users see the same logos)
+  loadGamemodeConfigFromFirebase();
+
+  // IMMEDIATELY OPEN THE FIREBASE REAL-TIME LISTENER ON PAGE START UP
+  startFirebaseRealtimeSync();
+});
+</script>
+
+<style>
+  .tier-testing-info-section {
+    max-width: 1300px;
+    margin: 60px auto 0;
+    padding: 40px 24px 10px;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+  .tier-testing-info-heading {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 1.9rem;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(255,255,255,0.85), 0 0 20px rgba(255,255,255,0.6), 0 0 40px rgba(255,255,255,0.35);
+    margin-bottom: 28px;
+  }
+  .tier-testing-info-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .tier-testing-info-btn {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    padding: 14px 32px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .tier-testing-info-btn:hover {
+    transform: translateY(-3px);
+  }
+  .tier-testing-info-btn.voluntary-tests-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+  }
+  .tier-testing-info-btn.voluntary-tests-btn:hover {
+    box-shadow: 0 6px 18px rgba(240,192,64,0.35);
+  }
+  .tier-testing-info-btn.high-tests-btn {
+    background: linear-gradient(135deg, var(--color-ht1), var(--color-lt1));
+    color: #fff;
+  }
+  .tier-testing-info-btn.high-tests-btn:hover {
+    box-shadow: 0 6px 18px rgba(255,68,68,0.35);
+  }
+</style>
+
+<section class="tier-testing-info-section">
+  <h2 class="tier-testing-info-heading">How Tier Testing Is Done</h2>
+  <div class="tier-testing-info-buttons">
+    <a class="tier-testing-info-btn voluntary-tests-btn" href="https://xtremetechprograms.github.io/XtremeTiers-VoulantryTierTesting/" target="_blank" rel="noopener">Voluntary Tests</a>
+    <a class="tier-testing-info-btn high-tests-btn" href="https://xtremetechprograms.github.io/XtremeTiers-HighTests/" target="_blank" rel="noopener">High Tests</a>
+  </div>
+</section>
+
+</body>
+</html>
